@@ -1269,6 +1269,8 @@ function CTAFinal() {
   const [form, setForm] = React.useState({ name: '', email: '', org: '', type: 'Ayuntamiento', units: '5-25', message: '' });
   const [errors, setErrors] = React.useState({});
   const [sent, setSent] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [serverError, setServerError] = React.useState('');
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const validate = () => {
     const e = {};
@@ -1278,7 +1280,37 @@ function CTAFinal() {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
-  const onSubmit = (ev) => { ev.preventDefault(); if (!validate()) return; setSent(true); };
+  const onSubmit = async (ev) => {
+    ev.preventDefault();
+    if (!validate()) return;
+    setSubmitting(true);
+    setServerError('');
+    try {
+      const res = await fetch('https://formspree.io/f/xnjydvlp', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          '_subject': 'New Demo Request — PlugPost',
+          'Name': form.name,
+          'Email': form.email,
+          'Organization': form.org,
+          'Type': form.type,
+          'Estimated Lamps': form.units,
+          'Message': form.message,
+        }),
+      });
+      if (res.ok) {
+        setSent(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setServerError(data.errors ? data.errors.map(e => e.message).join(', ') : 'Error al enviar. Inténtalo de nuevo.');
+      }
+    } catch {
+      setServerError('Error de conexión. Inténtalo de nuevo.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <section id="contacto" className="cta-final">
       <div className="container">
@@ -1351,7 +1383,12 @@ function CTAFinal() {
                   <label htmlFor="f-msg">Mensaje (opcional)</label>
                   <textarea id="f-msg" rows="3" placeholder="Cuéntanos brevemente el caso..." value={form.message} onChange={e => update('message', e.target.value)}></textarea>
                 </div>
-                <button type="submit" className="form-submit">Solicitar demo gratuita</button>
+                <button type="submit" className="form-submit" disabled={submitting}>
+                  {submitting ? 'Enviando…' : 'Solicitar demo gratuita'}
+                </button>
+                {serverError && (
+                  <div style={{ fontSize: 13, color: '#f87171', textAlign: 'center', marginTop: 4 }}>{serverError}</div>
+                )}
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.4)', fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }}>
                   Respondemos en menos de 24h laborables
                 </div>
