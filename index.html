@@ -1269,6 +1269,8 @@ function CTAFinal() {
   const [form, setForm] = React.useState({ name: '', email: '', org: '', type: 'Ayuntamiento', units: '5-25', message: '' });
   const [errors, setErrors] = React.useState({});
   const [sent, setSent] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [serverError, setServerError] = React.useState('');
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const validate = () => {
     const e = {};
@@ -1278,7 +1280,37 @@ function CTAFinal() {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
-  const onSubmit = (ev) => { ev.preventDefault(); if (!validate()) return; setSent(true); };
+  const onSubmit = async (ev) => {
+    ev.preventDefault();
+    if (!validate()) return;
+    setSubmitting(true);
+    setServerError('');
+    try {
+      const res = await fetch('https://formspree.io/f/xnjydvlp', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          '_subject': 'New Demo Request — PlugPost',
+          'Name': form.name,
+          'Email': form.email,
+          'Organization': form.org,
+          'Type': form.type,
+          'Estimated Lamps': form.units,
+          'Message': form.message,
+        }),
+      });
+      if (res.ok) {
+        setSent(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setServerError(data.errors ? data.errors.map(e => e.message).join(', ') : 'Error al enviar. Inténtalo de nuevo.');
+      }
+    } catch {
+      setServerError('Error de conexión. Inténtalo de nuevo.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <section id="contacto" className="cta-final">
       <div className="container">
@@ -1292,10 +1324,6 @@ function CTAFinal() {
               Cuéntanos quién eres y dónde quieres desplegar.
             </p>
             <div style={{ marginTop: 28, display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Ico.mail size={16}/>
-                <span>hola@plugpost.es</span>
-              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Ico.phone size={16}/>
                 <span>+34 620 988 517</span>
@@ -1351,7 +1379,12 @@ function CTAFinal() {
                   <label htmlFor="f-msg">Mensaje (opcional)</label>
                   <textarea id="f-msg" rows="3" placeholder="Cuéntanos brevemente el caso..." value={form.message} onChange={e => update('message', e.target.value)}></textarea>
                 </div>
-                <button type="submit" className="form-submit">Solicitar demo gratuita</button>
+                <button type="submit" className="form-submit" disabled={submitting}>
+                  {submitting ? 'Enviando…' : 'Solicitar demo gratuita'}
+                </button>
+                {serverError && (
+                  <div style={{ fontSize: 13, color: '#f87171', textAlign: 'center', marginTop: 4 }}>{serverError}</div>
+                )}
                 <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.4)', fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }}>
                   Respondemos en menos de 24h laborables
                 </div>
@@ -1421,7 +1454,7 @@ const LEGAL_CONTENT = {
     title: 'Aviso Legal',
     lbl: 'ES · RGPD / LSSI-CE',
     sections: [
-      { h: 'Titular del sitio web', body: `En cumplimiento con el artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y Comercio Electrónico (LSSI-CE), se informa que este sitio web es titularidad de Defcon8 Enterprise S.L., con domicilio social en Avda. Corts Catalanes, 5 Trade Center, 08173 Sant Cugat del Vallès, Barcelona, España. CIF: B-66858382. Contacto: hola@plugpost.es.` },
+      { h: 'Titular del sitio web', body: `En cumplimiento con el artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y Comercio Electrónico (LSSI-CE), se informa que este sitio web es titularidad de Defcon8 Enterprise S.L., con domicilio social en Avda. Corts Catalanes, 5 Trade Center, 08173 Sant Cugat del Vallès, Barcelona, España. CIF: B-66858382.` },
       { h: 'Objeto y condiciones de uso', body: `El presente Aviso Legal regula el acceso y uso del sitio web plugpost.es (en adelante, el "Sitio Web"), del que es titular Defcon8 Enterprise S.L. El acceso al Sitio Web atribuye la condición de Usuario e implica la aceptación plena y sin reservas de todas las disposiciones incluidas en este Aviso Legal.` },
       { h: 'Propiedad intelectual e industrial', body: `Todos los contenidos del Sitio Web —textos, fotografías, gráficos, imágenes, iconos, tecnología, software, logotipos, marcas, nombres comerciales y demás signos susceptibles de uso industrial y/o comercial— están sujetos a derechos de propiedad intelectual e industrial de Defcon8 Enterprise S.L. o de terceros. Queda expresamente prohibida su reproducción total o parcial sin autorización escrita.` },
       { h: 'Responsabilidad', body: `Defcon8 Enterprise S.L. no garantiza la ausencia de errores en el acceso al Sitio Web ni en sus contenidos, aunque despliega sus mejores esfuerzos para evitarlos. PlugPost no será responsable de los daños o perjuicios derivados del uso del Sitio Web o de su imposibilidad de acceso.` },
@@ -1432,11 +1465,11 @@ const LEGAL_CONTENT = {
     title: 'Política de Privacidad',
     lbl: 'ES · RGPD / LOPDGDD',
     sections: [
-      { h: 'Responsable del tratamiento', body: `Defcon8 Enterprise S.L. · CIF: B-66858382 · Avda. Corts Catalanes, 5 Trade Center, 08173 Sant Cugat del Vallès, Barcelona · hola@plugpost.es. Delegado de Protección de Datos: dpo@plugpost.es.` },
+      { h: 'Responsable del tratamiento', body: `Defcon8 Enterprise S.L. · CIF: B-66858382 · Avda. Corts Catalanes, 5 Trade Center, 08173 Sant Cugat del Vallès, Barcelona` },
       { h: 'Finalidades y base jurídica', body: `Tratamos sus datos personales para: (a) gestionar las solicitudes de demo e información comercial recibidas a través del formulario de contacto (base: ejecución de medidas precontractuales); (b) envío de comunicaciones comerciales sobre productos y servicios de PlugPost, previa solicitud del interesado (base: consentimiento); (c) cumplimiento de obligaciones legales.` },
       { h: 'Destinatarios', body: `Sus datos no se cederán a terceros salvo obligación legal. Contamos con proveedores de servicios cloud y CRM ubicados en el EEE o con garantías adecuadas (Cláusulas Contractuales Tipo de la Comisión Europea).` },
       { h: 'Conservación', body: `Los datos se conservarán mientras exista una relación comercial o hasta que el interesado solicite su supresión. En cualquier caso, durante los plazos exigidos por la normativa fiscal y mercantil vigente.` },
-      { h: 'Derechos', body: `Puede ejercer sus derechos de acceso, rectificación, supresión, oposición, portabilidad y limitación del tratamiento enviando un correo a dpo@plugpost.es, adjuntando copia de su DNI. También tiene derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (www.aepd.es).` },
+      { h: 'Derechos', body: `Puede ejercer sus derechos de acceso, rectificación, supresión, oposición, portabilidad y limitación del tratamiento, adjuntando copia de su DNI. También tiene derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (www.aepd.es).` },
     ]
   },
   cookies: {
@@ -1451,7 +1484,7 @@ const LEGAL_CONTENT = {
       ]},
       { h: 'Duración', body: `Las cookies de sesión se eliminan al cerrar el navegador. Las cookies persistentes tienen una duración máxima de 13 meses, renovable con cada visita.` },
       { h: 'Gestión y retirada del consentimiento', body: `Puede aceptar o rechazar cookies no esenciales mediante el panel de preferencias que aparece en su primera visita. También puede configurar su navegador para bloquear o eliminar cookies. Tenga en cuenta que la desactivación de ciertas cookies puede afectar al funcionamiento del sitio.` },
-      { h: 'Más información', body: `Para cualquier consulta sobre nuestra política de cookies, escríbanos a hola@plugpost.es o consulte la Agencia Española de Protección de Datos (www.aepd.es).` },
+      { h: 'Más información', body: `Para cualquier consulta sobre nuestra política de cookies, escríbanos o consulte la Agencia Española de Protección de Datos (www.aepd.es).` },
     ]
   }
 };
